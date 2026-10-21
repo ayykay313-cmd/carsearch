@@ -2,7 +2,8 @@ name: Car Watch
 
 on:
   schedule:
-    # GitHub cron is UTC. Dubai = UTC+4 (no daylight saving).
+    # GitHub cron is UTC. Dubai = UTC+4 (no daylight saving). Scheduled runs are best-effort and
+    # often start a few minutes late.
     - cron: "0 9 * * *"        # 13:00 Dubai: daily run, all sites
     - cron: "*/30 2-19 * * *"  # 06:00-23:30 Dubai, every 30 min: Toyota/Honda pre-owned watch
   workflow_dispatch:
