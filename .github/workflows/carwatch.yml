@@ -13,6 +13,11 @@ on:
         type: choice
         options: [watch, daily]
         default: watch
+      scheduled:
+        # Set by the external cron (see README): skip outside watch hours / if today's daily already ran.
+        description: "Behave like a scheduled run"
+        type: boolean
+        default: false
 
 # One run at a time, so two runs never overwrite each other's saved state.
 concurrency:
@@ -25,6 +30,7 @@ jobs:
     timeout-minutes: 40
     env:
       MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '7 9 * * *' && 'daily' || 'watch') }}
+      SCHEDULED_FLAG: ${{ (github.event_name == 'schedule' || inputs.scheduled) && '--scheduled' || '' }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       # Optional one-line AI verdicts in the daily report: your Claude subscription token from
@@ -64,11 +70,11 @@ jobs:
 
       - name: Daily run (all sites)
         if: env.MODE == 'daily'
-        run: python -m carwatch run ${{ github.event_name == 'schedule' && '--scheduled' || '' }}
+        run: python -m carwatch run $SCHEDULED_FLAG
 
       - name: Watch run (Toyota / Honda pre-owned)
         if: env.MODE == 'watch'
-        run: python -m carwatch watch ${{ github.event_name == 'schedule' && '--scheduled' || '' }}
+        run: python -m carwatch watch $SCHEDULED_FLAG
 
       - name: Save state
         if: always()
