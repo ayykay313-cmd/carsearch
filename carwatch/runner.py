@@ -131,9 +131,20 @@ def watch_match(l, cfg) -> bool:
     return False
 
 
-def in_watch_hours(cfg) -> bool:
+def watch_window(cfg):
+    """(start, end) of the watch day in minutes after midnight, Dubai time."""
     w = cfg["watch"]
-    return w.get("first_hour", 6) <= now_dubai().hour <= w.get("last_hour", 23)
+    to_min = lambda hhmm: int(hhmm.split(":")[0]) * 60 + int(hhmm.split(":")[1])  # noqa: E731
+    return to_min(w.get("start", "06:00")), to_min(w.get("end", "23:30"))
+
+
+def in_watch_hours(cfg) -> bool:
+    """Between start and end (Dubai), with slack for scheduler start-up delays (GitHub often starts
+    5-20 minutes late), but never past midnight."""
+    start, end = watch_window(cfg)
+    now = now_dubai()
+    minutes = now.hour * 60 + now.minute
+    return start - 5 <= minutes <= min(end + 25, 24 * 60 - 1)
 
 
 def run(scheduled=False, dry_run=False, no_ai=False, only_sources=None, force=False, mode="daily"):

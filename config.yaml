@@ -146,14 +146,16 @@ http:
   timeout_seconds: 30
   max_detail_pages_per_run: 40  # detail pages (for descriptions) fetched per site per run; the rest wait for tomorrow
 
-# Hourly watch of the official Toyota / Honda pre-owned sites (cars there sell fast).
-# Runs every hour from first_hour to last_hour (Dubai time) and sends an instant alert for available
-# hybrids matching these rules. Anything else on those sites (e.g. a 2025 RAV4 hybrid) is left for the
-# daily all-sites report. A car is only ever reported once (plus price drops).
+# Frequent watch of the official Toyota / Honda pre-owned sites (cars there sell fast).
+# Runs every interval_minutes from start to end (Dubai time) and sends an instant alert for
+# available hybrids matching these rules. Anything else on those sites (e.g. a 2025 RAV4 hybrid) is left
+# for the daily all-sites report. A car is only ever reported once (plus price drops).
+# On GitHub the times are set by the cron lines in .github/workflows/carwatch.yml (keep them in step).
 watch:
   enabled: true
-  first_hour: 6        # 6am
-  last_hour: 23        # 11pm (last check of the day)
+  start: "06:00"       # first check of the day
+  end: "23:30"         # last check of the day
+  interval_minutes: 30
   sources: [toyota_preowned, honda_preowned]
   ai_verdicts: false   # keep hourly alerts fast
   rules:

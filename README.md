@@ -5,7 +5,7 @@ drops on cars you've already been told about.
 
 | Run | When (Dubai time) | Sites | What you get |
 | --- | --- | --- | --- |
-| **Hourly watch** | every hour, 6am–11pm | Toyota Pre-Owned, Honda Pre-Owned | instant alert for an available **2026+ RAV4 hybrid**, **any Camry hybrid** or **any Accord hybrid** |
+| **Watch** | every 30 min, 6am–11:30pm | Toyota Pre-Owned, Honda Pre-Owned | instant alert for an available **2026+ RAV4 hybrid**, **any Camry hybrid** or **any Accord hybrid** |
 | **Daily report** | 1pm | all sites | everything that matches your criteria, incl. official-site cars the watch skips (e.g. 2025 RAV4 hybrids) |
 
 - Only **available** cars: reserved/booked/sold/coming-soon listings are skipped (and alerted if they come back).
@@ -17,14 +17,16 @@ drops on cars you've already been told about.
 ## Run it in the cloud (GitHub Actions) — recommended
 
 Your computer doesn't need to be on. The workflow [.github/workflows/carwatch.yml](.github/workflows/carwatch.yml)
-runs the hourly watch and the daily report on GitHub's servers.
+runs the 30-minute watch and the daily report on GitHub's servers.
 
 1. **Create a Telegram bot** (steps below) and note the bot token and your chat id.
 2. **Create a GitHub repository** at <https://github.com/new>, e.g. `car-watch`.
    - *Public* repo: Actions minutes are free and unlimited. The code and `config.yaml` are visible;
      your secrets and the database are not (but run logs, which list cars checked, are).
    - *Private* repo: the free plan includes 2,000 Actions minutes/month. This setup uses roughly
-     1,500–1,900 a month (hourly watch ≈ 2–3 min × 18 a day, daily ≈ 10–15 min), so it's close to the limit.
+     2,500–3,500 a month (watch ≈ 2–3 min × 35 a day, daily ≈ 10–15 min), so runs would stop part-way
+     through the month unless you add a payment method (about $4–12/month at GitHub's rates) or check
+     less often.
 3. **Push this folder** to the repo (GitHub shows the commands after you create it), e.g.:
    ```bash
    git remote add origin https://github.com/<you>/car-watch.git
@@ -47,9 +49,11 @@ How it works on GitHub:
 - The database (seen cars, prices, your 👎 taps) is kept in the Actions cache between runs. If GitHub
   ever drops that cache, the next run treats everything as new and you get one big report.
 - GitHub can start scheduled runs late (often 5–20 minutes, occasionally more) when it's busy.
+- In a **public** repo, GitHub pauses scheduled workflows after 60 days with no commits. It emails
+  you first; re-enable it under *Actions → Car Watch → Enable workflow* (or push any small change).
 - Each run's `logs/` and `reports/` are attached to the run as an artifact for 14 days.
-  GitHub also emails you if a run fails, and Car Watch sends a Telegram alert (the hourly watch at
-  most once a day).
+  GitHub also emails you if a run fails, and Car Watch sends a Telegram alert (the watch at most
+  once a day).
 - The official Toyota/Honda sites, DubiCars and the others may treat GitHub's data-centre IPs
   differently from your home connection. If a site blocks the cloud runs, the report says
   "⛔ blocked" for it (no workaround attempted); the fallback is running locally (below).
@@ -69,10 +73,10 @@ python -m carwatch install-schedule
 This installs three scheduled jobs:
 - **Daily report** at 13:00 Dubai time (converted to your time zone). If the computer was asleep or
   off, it runs as soon as possible afterwards.
-- **Hourly watch** 6am–11pm Dubai time.
+- **Watch** every 30 minutes, 6am–11:30pm Dubai time (`watch.interval_minutes`).
 - **Telegram sync** every 15 minutes, to apply your 👎 taps.
 
-Windows uses Task Scheduler (`CarWatchDaily`, `CarWatchHourlyWatch`, `CarWatchTelegramSync`), Mac
+Windows uses Task Scheduler (`CarWatchDaily`, `CarWatchPreownedWatch`, `CarWatchTelegramSync`), Mac
 uses launchd, Linux uses cron. Remove them with `python -m carwatch uninstall-schedule`. Locally the
 secrets go in `secrets.env` (copy `secrets.env.example`; it's git-ignored).
 
@@ -102,7 +106,7 @@ Every listing has a number (`#1`, `#2`, …) and a **👎 #N** button under the 
 - Or type in the chat: `remove 3`, `remove 3 7`, `undo 3` (numbers from the latest message).
 - Only messages from your own chat (`TELEGRAM_CHAT_ID`) are acted on.
 
-Taps are picked up at the start of every run (hourly in the cloud, every 15 minutes locally).
+Taps are picked up at the start of every run (every 30 minutes in the cloud, every 15 minutes locally).
 Telegram keeps unread taps for 24 hours. `python -m carwatch status` lists everything you've removed.
 
 ## AI verdicts (optional)
@@ -110,7 +114,7 @@ Telegram keeps unread taps for 24 hours. `python -m carwatch status` lists every
 Top listings in the daily report get a one-line verdict from `claude -p` (Claude Code, headless),
 using your subscription: locally your `claude` login, in the cloud the `CLAUDE_CODE_OAUTH_TOKEN`
 secret. `ANTHROPIC_API_KEY` and other API settings are removed from its environment, so an API key is
-never used. If it's missing or fails, the report goes out without verdicts. The hourly watch skips
+never used. If it's missing or fails, the report goes out without verdicts. The watch skips
 verdicts to stay fast. Turn them off with `ai_summary.enabled: false`.
 
 Locally, if `logs/run.log` shows "OAuth access token has expired", run `claude` in a terminal, type
@@ -124,7 +128,7 @@ claude -p "say OK"
 
 ```bash
 python -m carwatch run                 # daily report now (all sites)
-python -m carwatch watch               # hourly watch now (Toyota/Honda pre-owned)
+python -m carwatch watch               # watch now (Toyota/Honda pre-owned)
 python -m carwatch run --dry-run       # save the report, don't send or mark as seen
 python -m carwatch run --sources dubicars,cars24 --no-ai
 python -m carwatch status              # removed cars, last 10 runs and per-site status
@@ -136,7 +140,7 @@ python -m carwatch telegram-sync       # apply Telegram taps now
 | Step | Rule |
 | --- | --- |
 | Every site | available (not reserved/booked/sold/coming soon), a hybrid (site fuel type says Hybrid, or title/trim/description says hybrid/HEV), not a mild hybrid, not electric/diesel |
-| Toyota/Honda Pre-Owned | only the listed models (Camry, RAV4, Accord); no price/km/year/location limits. The hourly watch narrows this to the `watch.rules` (RAV4 2026+, any Camry, any Accord) |
+| Toyota/Honda Pre-Owned | only the listed models (Camry, RAV4, Accord); no price/km/year/location limits. The watch narrows this to the `watch.rules` (RAV4 2026+, any Camry, any Accord) |
 | Other sites | year ≥ `min_year`, `min_km` ≤ km < `max_km` (0 km new stock excluded), price < `max_price_aed`, GCC specs, sedan/SUV, not an excluded make, Dubai (main) or Sharjah/Abu Dhabi (lower priority) |
 | New | matches now and was never included in a sent message (by site listing ID) |
 | Price drop | already reported, still matches, price lower than when you were last told |
@@ -151,8 +155,8 @@ python -m carwatch telegram-sync       # apply Telegram taps now
 
 | Site | Status | How |
 | --- | --- | --- |
-| Toyota Pre-Owned | ✅ top priority, hourly | toyota.ae model pages (`camry-hybrid`, `camry`, `rav4`) rendered in headless Chromium (Playwright), since the cars load via a token-protected API. "Reserved" cards skipped. A page whose results don't load is retried, then reported as not loaded (never as "no cars"). Detail pages are off-limits in robots.txt and never opened |
-| Honda Pre-Owned | ✅ top priority, hourly | honda.ae `accord-hybrid` (watch) and `accord` (daily) pages, same method |
+| Toyota Pre-Owned | ✅ top priority, every 30 min | toyota.ae model pages (`camry-hybrid`, `camry`, `rav4`) rendered in headless Chromium (Playwright), since the cars load via a token-protected API. "Reserved" cards skipped. A page whose results don't load is retried, then reported as not loaded (never as "no cars"). Detail pages are off-limits in robots.txt and never opened |
+| Honda Pre-Owned | ✅ top priority, every 30 min | honda.ae `accord-hybrid` (watch) and `accord` (daily) pages, same method |
 | DubiCars | ✅ daily | `/uae/used/hybrid-cars?pt=<price>&kt=<km>` (allowed by robots.txt), plus priority-model pages to catch hybrids filed under "Petrol"; detail page fetched only for new candidates. Sold/inactive cards skipped |
 | CarSwitch | ✅ daily | `/uae/used-cars/electric-hybrid-cars-for-sale-in-uae`; robots.txt bans its filter parameters, so filtering is local. Detail page for candidates (body, fuel type, drops EVs). No seller description, so red flags only check the title |
 | Cars24 | ✅ daily | `/buy-used-hybrid-cars-dubai/` plus Camry/RAV4/Accord pages. Card data includes status (RESERVED / COMING_SOON skipped), GCC badge, hub city and fuel type |
@@ -160,6 +164,6 @@ python -m carwatch telegram-sync       # apply Telegram taps now
 | Dubizzle | ⛔ blocked | Imperva bot protection on plain requests; skipped, not bypassed |
 | YallaMotor | ⛔ blocked | Cloudflare challenge (HTTP 403); skipped, not bypassed |
 
-Request volume: the hourly watch loads 3 pages. The daily run makes about 30–40 requests to DubiCars,
+Request volume: each watch loads 3 pages. The daily run makes about 30–40 requests to DubiCars,
 a handful each to CarSwitch, Cars24 and the official sites, and about 10–20 to Kavak, plus a detail
 page for each new candidate (at most 40 per site per run), with random 4–8 s pauses (20–25 s on Kavak).

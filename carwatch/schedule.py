@@ -6,13 +6,14 @@ import platform
 import subprocess
 import sys
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from .config import DUBAI_TZ, LOG_DIR, ROOT, RUN_HOUR_DUBAI, ensure_dirs, load_config
+from .runner import watch_window
 
 TASK_NAME = "CarWatchDaily"
-WATCH_TASK_NAME = "CarWatchHourlyWatch"
+WATCH_TASK_NAME = "CarWatchPreownedWatch"
 SYNC_TASK_NAME = "CarWatchTelegramSync"
 LAUNCHD_LABEL = "com.carwatch.daily"
 WATCH_LAUNCHD_LABEL = "com.carwatch.watch"
@@ -23,6 +24,11 @@ CRON_MARKERS = ("carwatch run --scheduled", "carwatch watch --scheduled", "carwa
 def local_hour_time(dubai_hour: int):
     """Today's dubai_hour:00 (Dubai time) expressed in this computer's local time zone."""
     return datetime.now(DUBAI_TZ).replace(hour=dubai_hour, minute=0, second=0, microsecond=0).astimezone()
+
+
+def local_minute_time(dubai_minutes: int):
+    """Today's time `dubai_minutes` after midnight Dubai, in this computer's local time zone."""
+    return local_hour_time(0) + timedelta(minutes=dubai_minutes)
 
 
 def local_run_time():
@@ -73,13 +79,15 @@ def windows_tasks():
         "<Repetition><Interval>PT15M</Interval><StopAtDurationEnd>false</StopAtDurationEnd></Repetition>"
         "</TimeTrigger>",
         "-m carwatch telegram-sync", "PT5M")
-    w = load_config().get("watch", {})
-    first = local_hour_time(w.get("first_hour", 6)).strftime("%Y-%m-%dT%H:%M:%S")
-    hours = w.get("last_hour", 23) - w.get("first_hour", 6)
+    cfg = load_config()
+    start, end = watch_window(cfg)
+    every = cfg["watch"].get("interval_minutes", 60)
+    first = local_minute_time(start).strftime("%Y-%m-%dT%H:%M:%S")
+    w = cfg["watch"]
     watch = windows_xml(
-        "Car Watch: hourly Toyota/Honda pre-owned watch (6am-11pm Dubai)",
+        f"Car Watch: Toyota/Honda pre-owned watch every {every} min ({w['start']}-{w['end']} Dubai)",
         f"<CalendarTrigger><StartBoundary>{first}</StartBoundary><Enabled>true</Enabled>"
-        f"<Repetition><Interval>PT1H</Interval><Duration>PT{hours}H5M</Duration>"
+        f"<Repetition><Interval>PT{every}M</Interval><Duration>PT{end - start + 5}M</Duration>"
         "<StopAtDurationEnd>false</StopAtDurationEnd></Repetition>"
         "<ScheduleByDay><DaysInterval>1</DaysInterval></ScheduleByDay></CalendarTrigger>",
         "-m carwatch watch --scheduled", "PT20M")
@@ -108,10 +116,11 @@ def launchd_agents():
                           f"<key>StartCalendarInterval</key><dict><key>Hour</key><integer>{t.hour}</integer>"
                           f"<key>Minute</key><integer>{t.minute}</integer></dict>")
     sync = launchd_plist(SYNC_LAUNCHD_LABEL, ["telegram-sync"], "<key>StartInterval</key><integer>900</integer>")
-    w = load_config().get("watch", {})
-    slots = "".join(f"<dict><key>Hour</key><integer>{local_hour_time(h).hour}</integer>"
-                    f"<key>Minute</key><integer>{local_hour_time(h).minute}</integer></dict>"
-                    for h in range(w.get("first_hour", 6), w.get("last_hour", 23) + 1))
+    cfg = load_config()
+    start, end = watch_window(cfg)
+    times = [local_minute_time(m) for m in range(start, end + 1, cfg["watch"].get("interval_minutes", 60))]
+    slots = "".join(f"<dict><key>Hour</key><integer>{t.hour}</integer>"
+                    f"<key>Minute</key><integer>{t.minute}</integer></dict>" for t in times)
     watch = launchd_plist(WATCH_LAUNCHD_LABEL, ["watch", "--scheduled"],
                           f"<key>StartCalendarInterval</key><array>{slots}</array>")
     return {LAUNCHD_LABEL: daily, WATCH_LAUNCHD_LABEL: watch, SYNC_LAUNCHD_LABEL: sync}
@@ -147,9 +156,10 @@ def install():
     else:
         # cron can't catch up after sleep, so check hourly; --scheduled runs at most once per daily window.
         log = LOG_DIR / "scheduler.log"
-        # watch: hourly; `watch --scheduled` itself skips hours outside 6am-11pm Dubai
+        # watch: every interval; `watch --scheduled` itself skips times outside 6am-11pm Dubai
+        every = load_config().get("watch", {}).get("interval_minutes", 60)
         lines = [f'0 * * * * cd "{ROOT}" && "{sys.executable}" -m carwatch run --scheduled >> "{log}" 2>&1',
-                 f'5 * * * * cd "{ROOT}" && "{sys.executable}" -m carwatch watch --scheduled >> "{log}" 2>&1',
+                 f'*/{every} * * * * cd "{ROOT}" && "{sys.executable}" -m carwatch watch --scheduled >> "{log}" 2>&1',
                  f'*/15 * * * * cd "{ROOT}" && "{sys.executable}" -m carwatch telegram-sync >> "{log}" 2>&1']
         subprocess.run(["crontab", "-"], input="\n".join(_crontab_without_ours() + lines) + "\n",
                        text=True, check=True)
