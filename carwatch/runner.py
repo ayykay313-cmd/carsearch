@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import socket
 import sys
 import time
@@ -131,6 +132,21 @@ def watch_match(l, cfg) -> bool:
     return False
 
 
+def write_github_summary(summary: dict, report_text: str):
+    """On GitHub Actions, show the outcome on the run page (readable without signing in, unlike logs)."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    lines = [f"### Car Watch: {summary['mode']} run",
+             f"**{summary['new']} new, {summary['price_drops']} price drops** · Telegram: {summary['notification']}"
+             f" · AI verdicts: {summary['ai']}", "", "| Site | Result |", "| --- | --- |"]
+    lines += [f"| {site} | {st} |" for site, st in summary["sources"].items()]
+    if report_text:
+        lines += ["", "<details><summary>Message sent</summary>", "", "```", report_text, "```", "</details>"]
+    with open(path, "a", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+
 def watch_window(cfg):
     """(start, end) of the watch day in minutes after midnight, Dubai time."""
     w = cfg["watch"]
@@ -260,6 +276,7 @@ def run(scheduled=False, dry_run=False, no_ai=False, only_sources=None, force=Fa
 
         summary = {"mode": mode, "new": len(all_new), "price_drops": len(all_drops), "sources": status,
                    "ai": ai_status, "notification": sent, "report": str(report_path) if report_path else None}
+        write_github_summary(summary, report.to_plain(text) if (all_new or all_drops) else "")
         db.finish_run(run_id, "dry" if dry_run else "ok", summary)  # dry runs don't count for --scheduled
         log.info("=== Run %d finished OK: %s ===", run_id, summary)
         return 0
