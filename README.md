@@ -5,8 +5,8 @@ drops on cars you've already been told about.
 
 | Run | When (Dubai time) | Sites | What you get |
 | --- | --- | --- | --- |
-| **Watch** | every 30 min, 6am–11:30pm | Toyota Pre-Owned, Honda Pre-Owned | instant alert for an available **2026+ RAV4 hybrid**, **any Camry hybrid** or **any Accord hybrid** |
-| **Daily report** | 1pm | all sites | everything that matches your criteria, incl. official-site cars the watch skips (e.g. 2025 RAV4 hybrids) |
+| **Watch** | every 30 min (in the cloud at :07 and :37), 6:07am–11:37pm | Toyota Pre-Owned, Honda Pre-Owned | instant alert for an available **2026+ RAV4 hybrid**, **any Camry hybrid** or **any Accord hybrid** |
+| **Daily report** | 1pm (1:07pm in the cloud) | all sites | everything that matches your criteria, incl. official-site cars the watch skips (e.g. 2025 RAV4 hybrids) |
 
 - Only **available** cars: reserved/booked/sold/coming-soon listings are skipped (and alerted if they come back).
 - Only full hybrids (HEV) and plug-ins: 48V/12V mild hybrids are excluded.
@@ -49,6 +49,8 @@ How it works on GitHub:
 - The database (seen cars, prices, your 👎 taps) is kept in the Actions cache between runs. If GitHub
   ever drops that cache, the next run treats everything as new and you get one big report.
 - GitHub can start scheduled runs late (often 5–20 minutes, occasionally more) when it's busy.
+  The cloud schedule uses :07 and :37 past the hour, because GitHub delays or drops many runs
+  set for exactly :00 and :30.
 - In a **public** repo, GitHub pauses scheduled workflows after 60 days with no commits. It emails
   you first; re-enable it under *Actions → Car Watch → Enable workflow* (or push any small change).
 - Each run's `logs/` and `reports/` are attached to the run as an artifact for 14 days.
