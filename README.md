@@ -60,6 +60,38 @@ How it works on GitHub:
   differently from your home connection. If a site blocks the cloud runs, the report says
   "⛔ blocked" for it (no workaround attempted); the fallback is running locally (below).
 
+### Reliable timing: trigger the runs from cron-job.org
+
+GitHub's own schedule is best-effort and can skip runs for hours (especially on a new repo). A free
+external cron that calls GitHub's API starts the runs on time. Keep GitHub's schedule as a backup:
+runs started this way pass `scheduled: true`, so a daily report already sent today isn't sent again
+and watches outside 6am–11:30pm are skipped. If both fire in the same slot, the second watch finds
+nothing new.
+
+1. **GitHub token**: <https://github.com/settings/personal-access-tokens/new> (fine-grained).
+   *Repository access* → only this repo; *Permissions → Actions* → **Read and write**. Pick the longest
+   expiry and note the date; the runs stop when it expires.
+2. **cron-job.org**: sign up free at <https://cron-job.org>, then *Create cronjob* twice:
+
+   | | Watch | Daily report |
+   | --- | --- | --- |
+   | Title | Car Watch – watch | Car Watch – daily |
+   | Schedule (custom, time zone **Asia/Dubai**) | minutes `7,37`, hours `6–23`, every day | minute `7`, hour `13`, every day |
+
+   Both use the same request (*Advanced* tab):
+   - URL: `https://api.github.com/repos/<you>/<repo>/actions/workflows/carwatch.yml/dispatches`
+   - Request method: `POST`
+   - Headers:
+     - `Accept: application/vnd.github+json`
+     - `Authorization: Bearer <your token>`
+     - `X-GitHub-Api-Version: 2022-11-28`
+     - `Content-Type: application/json`
+   - Request body, watch: `{"ref":"main","inputs":{"mode":"watch","scheduled":"true"}}`
+   - Request body, daily: `{"ref":"main","inputs":{"mode":"daily","scheduled":"true"}}`
+3. **Test**: use *Test run* on each job. GitHub answers `204 No Content` and a run appears under
+   *Actions → Car Watch*. `401` means a bad or expired token; `403`, a token without Actions write;
+   `422`, a wrong body or branch.
+
 ## Run it on your computer (Windows / Mac / Linux)
 
 ```bash
