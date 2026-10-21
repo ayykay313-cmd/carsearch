@@ -1,0 +1,216 @@
+# Car Watch — search criteria and settings.
+# Edit freely; changes apply on the next run. Make/model names are case-insensitive.
+
+criteria:
+  min_year: 2023            # "newer than 2022"
+  min_km: 1                 # excludes 0 km new/grey-export stock listed as used (set 0 to include)
+  max_km: 30000             # strictly under this
+  max_price_aed: 140000     # strictly under this
+  specs: [GCC]              # regional specs allowed
+  body_types: [Sedan, SUV, Crossover]
+  # Every listing must be a hybrid: the site's fuel type says Hybrid, OR the title/trim/description says
+  # hybrid/HEV (catches cars a seller filed under "Petrol", and sites with no hybrid filter).
+  excluded_fuels: [Electric, Diesel]
+  include_plugin_hybrids: true   # PHEVs are included but listed in their own section
+
+  # Locations: primary is the main section; secondary is a lower-priority section.
+  # Anything else (Ajman, RAK, ...) is ignored.
+  locations:
+    primary: [Dubai]
+    secondary: [Sharjah, Abu Dhabi]
+
+  # No Chinese cars. Matched against the make name.
+  excluded_makes:
+    - BYD
+    - MG
+    - Geely
+    - Chery
+    - GAC
+    - BAIC
+    - Haval
+    - Great Wall
+    - GWM
+    - Tank
+    - Jetour
+    - Exeed
+    - Hongqi
+    - Changan
+    - Voyah
+    - Zeekr
+    - Lynk & Co
+    - Jaecoo
+    - Omoda
+    - Dongfeng
+    - JAC
+    - Li Auto
+    - Xpeng
+    - Nio
+    - Leapmotor
+    - Kaiyi
+    - Forthing
+    - Bestune
+    - FAW
+    - Maxus
+    - Jetta
+    - Soueast
+    - Rox
+    - Avatr
+    - Deepal
+    - Denza
+    - Wuling
+    - Riddara
+    - SWM
+    - Hiphi
+    - Neta
+    - Aion
+    - Hozon
+    - Seres
+    - Aito
+
+  # Preferred origin: shown with a 🇯🇵 marker.
+  japanese_makes: [Toyota, Lexus, Honda, Nissan, Infiniti, Mazda, Mitsubishi, Subaru, Suzuki]
+
+# Priority models get a ⭐ marker and always get an AI verdict.
+# Format: "Make Model" — the model matches by prefix, so "Lexus RX" also matches RX350h / RX500h.
+priority_models:
+  - Toyota Camry
+  - Toyota RAV4
+  - Lexus ES
+  - Lexus NX
+  - Lexus RX
+  - Honda Accord
+  - Honda CR-V
+  - Hyundai Sonata
+# Put priority models at the top of each section (otherwise they're mixed in by deal score).
+priority_first: false
+
+checks:
+  # Keyword matching on title + description (case-insensitive, whole words). Matches go to a "Flagged" section.
+  # Negated mentions are ignored: "accident free", "no accidents", "zero repaint", "without damage".
+  red_flags:
+    - accident
+    - accidented
+    - repaint
+    - repainted
+    - damaged
+    - damage
+    - non-gcc
+    - non gcc
+    - imported
+    - needs work
+    - salvage
+    - flood
+    - rebuilt
+    - total loss
+    - us spec
+    - american spec
+    - canadian spec
+    - for export          # 0 km grey-export stock: often no local agency warranty
+    - export only
+  # A listing must mention one of these in title, trim, or description, else it's flagged as a possible mislabel.
+  hybrid_keywords: [hybrid, hev, phev, "e-hybrid", "300h", "350h", "450h", "500h", "250h", "200h", "260h"]
+  # If the title/trim says one of these and NOT hybrid/HEV, the listing is flagged as a likely mislabel
+  # (e.g. "Accord EXL TURBO" is the 1.5T petrol car even if the site files it under Hybrid).
+  non_hybrid_title_keywords: [turbo, petrol, gasoline]
+  # Reserved/sold cars are never reported. Sites' own flags are used where they exist; these words in a
+  # title also count.
+  reserved_keywords: [reserved, booked, sold out, under offer]
+  # Mild hybrids (MHEV) are excluded: only full hybrids (HEV) and plug-ins count. Sites often tag 48V/12V
+  # mild hybrids (Volvo B5, Audi 35 TFSI, Mercedes EQ Boost, Suzuki "Hybrid") as "Hybrid". Models listed
+  # here are excluded even when the title says "Hybrid", unless they're plug-ins.
+  mild_hybrid_keywords: [mild hybrid, mild-hybrid, mhev, 48v, 48-volt, eq boost, shvs]
+  mild_hybrid_models: [Volvo XC60, Volvo XC90, Volvo XC40, Volvo S60, Volvo S90, Audi A3, Audi A4, Audi A5, Audi A6, Audi Q3, Audi Q5, Audi Q7, Audi Q8, Mercedes Benz A200, Mercedes Benz C200, Mercedes Benz E200, Mercedes Benz GLC200, Mercedes Benz GLA, Mercedes Benz CLA, Mercedes A200, Mercedes C200, Mercedes E200, Suzuki Vitara, Suzuki Fronx, Suzuki Swift, Suzuki Ertiga, Suzuki Baleno, Suzuki Dzire, Toyota Urban Cruiser, Toyota Rumion, Toyota Starlet]
+  # Words that mark a plug-in hybrid.
+  phev_keywords: [plug-in, plug in, plugin, phev, "e-hybrid", rechargeable, "450h+", "rav4 prime", "recharge", "xdrive45e", "xdrive50e", "e-tron hybrid", "4xe", "t8", "tfsie", "tfsi e", "300e", "330e", "350e", "400e", "450e", "580e"]
+
+deal_score:
+  min_comparables: 3          # need this many other listings (same make, model, year) before scoring
+  good_deal_pct: 10           # >= 10% below average -> "deal"
+  great_deal_pct: 15          # >= 15% below average -> "great deal"
+  comparable_window_days: 60  # only compare against listings seen in the last N days
+
+ai_summary:
+  enabled: true
+  command: claude             # headless Claude Code; uses your logged-in subscription (ANTHROPIC_API_KEY is removed)
+  model: sonnet
+  max_listings: 12            # verdicts for the top N listings (+ all priority models)
+  timeout_seconds: 180
+
+notify:
+  method: telegram            # telegram | none (report is always saved to reports/)
+  max_listings_per_section: 25
+
+http:
+  min_delay_seconds: 4        # polite random delay between requests to the same site
+  max_delay_seconds: 8
+  timeout_seconds: 30
+  max_detail_pages_per_run: 40  # detail pages (for descriptions) fetched per site per run; the rest wait for tomorrow
+
+# Hourly watch of the official Toyota / Honda pre-owned sites (cars there sell fast).
+# Runs every hour from first_hour to last_hour (Dubai time) and sends an instant alert for available
+# hybrids matching these rules. Anything else on those sites (e.g. a 2025 RAV4 hybrid) is left for the
+# daily all-sites report. A car is only ever reported once (plus price drops).
+watch:
+  enabled: true
+  first_hour: 6        # 6am
+  last_hour: 23        # 11pm (last check of the day)
+  sources: [toyota_preowned, honda_preowned]
+  ai_verdicts: false   # keep hourly alerts fast
+  rules:
+    - {model: Toyota RAV4, min_year: 2026}
+    - {model: Toyota Camry}
+    - {model: Honda Accord}
+
+sources:
+  # Top priority: official Al-Futtaim pre-owned sites. These skip the price/km/year/location criteria:
+  # any AVAILABLE (not reserved) hybrid of the listed models is reported, in its own section at the top.
+  # Pages are rendered in a headless browser (Playwright) because the cars load via JavaScript.
+  toyota_preowned:
+    enabled: true
+    models: [Toyota Camry, Toyota RAV4]
+    pages:
+      - https://www.toyota.ae/en/pre-owned/camry-hybrid/
+      - https://www.toyota.ae/en/pre-owned/camry/
+      - https://www.toyota.ae/en/pre-owned/rav4/
+    watch_pages:     # the hourly watch only loads these
+      - https://www.toyota.ae/en/pre-owned/camry-hybrid/
+      - https://www.toyota.ae/en/pre-owned/rav4/
+  honda_preowned:
+    enabled: true
+    models: [Honda Accord]
+    pages:
+      - https://www.honda.ae/en/cars/pre-owned/accord-hybrid/
+      - https://www.honda.ae/en/cars/pre-owned/accord/
+    watch_pages:
+      - https://www.honda.ae/en/cars/pre-owned/accord-hybrid/
+
+  dubicars:
+    enabled: true
+    max_pages: 20
+    # Also scan these model pages (same price/km filters) for hybrids a seller filed under "Petrol";
+    # only listings whose title/trim/description says hybrid/HEV are kept.
+    extra_paths:
+      - uae/used/toyota/camry
+      - uae/used/toyota/rav-4
+      - uae/used/honda/accord
+      - uae/used/honda/cr-v
+      - uae/used/lexus/es-series
+      - uae/used/lexus/nx-series
+      - uae/used/lexus/rx-series
+      - uae/used/hyundai/sonata
+  carswitch:
+    enabled: true
+    max_pages: 6
+  cars24:
+    enabled: true
+    paths:   # the hybrid page, plus model pages for hybrids filed under "Petrol"
+      - buy-used-hybrid-cars-dubai
+      - buy-used-toyota-camry-cars-dubai
+      - buy-used-toyota-rav4-cars-dubai
+      - buy-used-honda-accord-cars-dubai
+  kavak:
+    enabled: true
+    max_pages: 8     # per path: /ae/preowned/hybrid and each year from min_year
+    http:            # Kavak's robots.txt asks for 20 seconds between requests
+      min_delay_seconds: 20
+      max_delay_seconds: 25

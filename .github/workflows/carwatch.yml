@@ -1,0 +1,88 @@
+name: Car Watch
+
+on:
+  schedule:
+    # GitHub cron is UTC. Dubai = UTC+4 (no daylight saving).
+    - cron: "0 9 * * *"     # 13:00 Dubai: daily run, all sites
+    - cron: "0 2-19 * * *"  # 06:00-23:00 Dubai, hourly: Toyota/Honda pre-owned watch
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "What to run"
+        type: choice
+        options: [watch, daily]
+        default: watch
+
+# One run at a time, so two runs never overwrite each other's saved state.
+concurrency:
+  group: carwatch
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '0 9 * * *' && 'daily' || 'watch') }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      # Optional one-line AI verdicts in the daily report: your Claude subscription token from
+      # `claude setup-token` (not an API key; ANTHROPIC_API_KEY is never used).
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Cache Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - run: python -m playwright install --with-deps chromium
+
+      # The SQLite database (seen listings, prices, "Not interested" taps) lives in the Actions cache
+      # between runs: restore the newest copy, save a new one at the end.
+      - name: Restore state
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: carwatch-state-${{ github.run_id }}
+          restore-keys: carwatch-state-
+
+      - name: Install Claude Code (for AI verdicts)
+        if: env.MODE == 'daily' && env.CLAUDE_CODE_OAUTH_TOKEN != ''
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Daily run (all sites)
+        if: env.MODE == 'daily'
+        run: python -m carwatch run ${{ github.event_name == 'schedule' && '--scheduled' || '' }}
+
+      - name: Watch run (Toyota / Honda pre-owned)
+        if: env.MODE == 'watch'
+        run: python -m carwatch watch ${{ github.event_name == 'schedule' && '--scheduled' || '' }}
+
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: carwatch-state-${{ github.run_id }}
+
+      - name: Upload logs and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: carwatch-${{ env.MODE }}-${{ github.run_id }}
+          path: |
+            logs/
+            reports/
+          retention-days: 14
+          if-no-files-found: ignore
