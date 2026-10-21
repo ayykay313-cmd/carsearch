@@ -132,8 +132,24 @@ def watch_match(l, cfg) -> bool:
     return False
 
 
+def gh_annotation(level: str, title: str, message: str):
+    """A GitHub Actions annotation: shown on the public run page, readable without signing in."""
+    if os.environ.get("GITHUB_ACTIONS") != "true" or sys.stdout is None:
+        return
+    esc = lambda s: s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")  # noqa: E731
+    print(f"::{level} title={esc(title).replace(',', '%2C').replace(':', '%3A')}::{esc(message)}", flush=True)
+
+
 def write_github_summary(summary: dict, report_text: str):
-    """On GitHub Actions, show the outcome on the run page (readable without signing in, unlike logs)."""
+    """On GitHub Actions: per-site results as annotations (public) and a fuller job summary (signed-in)."""
+    sites = "\n".join(f"{site}: {st}" for site, st in summary["sources"].items())
+    gh_annotation("notice", f"Car Watch {summary['mode']} run",
+                  f"{summary['new']} new, {summary['price_drops']} price drops. Telegram: {summary['notification']}. "
+                  f"AI verdicts: {summary['ai']}\n{sites}")
+    failed = {site: st for site, st in summary["sources"].items() if not st.startswith("✅")}
+    if failed:
+        gh_annotation("warning", f"Car Watch: {len(failed)} site(s) not checked",
+                      "\n".join(f"{site}: {st}" for site, st in failed.items()))
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not path:
         return
@@ -283,6 +299,7 @@ def run(scheduled=False, dry_run=False, no_ai=False, only_sources=None, force=Fa
     except Exception as e:
         log.error("Run %d failed: %s\n%s", run_id, e, traceback.format_exc())
         db.finish_run(run_id, "failed", error=f"{type(e).__name__}: {e}")
+        gh_annotation("error", f"Car Watch {mode} run failed", f"{type(e).__name__}: {e}")
         today = now_dubai().date().isoformat()
         if watch and db.get_kv("watch_failure_alert") == today:
             return 1  # already alerted about the watch today
