@@ -6,7 +6,7 @@ drops on cars you've already been told about.
 | Run | When (Dubai time) | Sites | What you get |
 | --- | --- | --- | --- |
 | **Watch** | every 30 min (in the cloud at :07 and :37), 6:07am–11:37pm | Toyota Pre-Owned, Honda Pre-Owned | instant alert for an available **2026+ RAV4 hybrid**, **any Camry hybrid** or **any Accord hybrid** |
-| **Daily report** | 1pm (1:07pm in the cloud) | all sites | everything that matches your criteria, incl. official-site cars the watch skips (e.g. 2025 RAV4 hybrids) |
+| **Daily report** | 12:00pm (`daily_time` in config.yaml; cron-job.org at 12:00, GitHub backup at 12:07) | all sites | everything that matches your criteria, incl. official-site cars the watch skips (e.g. 2025 RAV4 hybrids) |
 
 - Only **available** cars: reserved/booked/sold/coming-soon listings are skipped (and alerted if they come back).
 - Only full hybrids (HEV) and plug-ins: 48V/12V mild hybrids are excluded.
@@ -76,7 +76,7 @@ nothing new.
    | | Watch | Daily report |
    | --- | --- | --- |
    | Title | Car Watch – watch | Car Watch – daily |
-   | Schedule (custom, time zone **Asia/Dubai**) | minutes `7,37`, hours `6–23`, every day | minute `7`, hour `13`, every day |
+   | Schedule (custom, time zone **Asia/Dubai**) | minutes `0,30`, hours `6–23`, every day | minute `0`, hour `12` (= `daily_time`), every day |
 
    Both use the same request (*Advanced* tab):
    - URL: `https://api.github.com/repos/<you>/<repo>/actions/workflows/carwatch.yml/dispatches`
@@ -105,7 +105,7 @@ python -m carwatch install-schedule
 ```
 
 This installs three scheduled jobs:
-- **Daily report** at 13:00 Dubai time (converted to your time zone). If the computer was asleep or
+- **Daily report** at `daily_time` (12:00) Dubai time (converted to your time zone). If the computer was asleep or
   off, it runs as soon as possible afterwards.
 - **Watch** every 30 minutes, 6am–11:30pm Dubai time (`watch.interval_minutes`).
 - **Telegram sync** every 15 minutes, to apply your 👎 taps.

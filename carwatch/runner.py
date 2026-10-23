@@ -10,7 +10,7 @@ from html import escape
 from logging.handlers import RotatingFileHandler
 
 from . import report, telegram_sync
-from .config import (LOG_DIR, REPORT_DIR, RUN_HOUR_DUBAI, ensure_dirs, load_config, load_secrets,
+from .config import (LOG_DIR, REPORT_DIR, daily_time, ensure_dirs, load_config, load_secrets,
                      now_dubai)
 from .db import DB, norm, same_car
 from .filters import annotate, check_criteria
@@ -42,10 +42,13 @@ def setup_logging(verbose=False):
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
-def current_window_start():
-    """Start of the current daily window = most recent 13:00 Dubai (10 min slack for early triggers)."""
+def current_window_start(cfg):
+    """Start of the current daily window = the most recent daily_time (Dubai), with 10 min slack for early
+    triggers. A scheduled daily run skips if one already succeeded in this window, so a late backup
+    trigger can't send a second daily report."""
+    hour, minute = daily_time(cfg)
     now = now_dubai() + timedelta(minutes=10)
-    start = now.replace(hour=RUN_HOUR_DUBAI, minute=0, second=0, microsecond=0)
+    start = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
     return start if now >= start else start - timedelta(days=1)
 
 
@@ -197,7 +200,7 @@ def run(scheduled=False, dry_run=False, no_ai=False, only_sources=None, force=Fa
         no_ai = no_ai or not cfg["watch"].get("ai_verdicts", False)
     elif scheduled and not force:
         last = db.last_successful_run()
-        if last and last >= current_window_start():
+        if last and last >= current_window_start(cfg):
             log.info("Already ran successfully at %s for this window; skipping.", last)
             return 0
 

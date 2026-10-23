@@ -146,6 +146,11 @@ http:
   timeout_seconds: 30
   max_detail_pages_per_run: 40  # detail pages (for descriptions) fetched per site per run; the rest wait for tomorrow
 
+# Daily all-sites report time (Dubai). Keep it the same as the cron-job.org daily job. A daily report
+# counts as "today's" from this time, so a late backup trigger can't send a second one the same day.
+# GitHub's backup schedule runs 7 minutes later (.github/workflows/carwatch.yml: keep them in step).
+daily_time: "12:00"
+
 # Frequent watch of the official Toyota / Honda pre-owned sites (cars there sell fast).
 # Runs every interval_minutes from start to end (Dubai time) and sends an instant alert for
 # available hybrids matching these rules. Anything else on those sites (e.g. a 2025 RAV4 hybrid) is left

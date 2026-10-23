@@ -9,7 +9,7 @@ import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from .config import DUBAI_TZ, LOG_DIR, ROOT, RUN_HOUR_DUBAI, ensure_dirs, load_config
+from .config import DUBAI_TZ, LOG_DIR, ROOT, daily_time, ensure_dirs, load_config
 from .runner import watch_window
 
 TASK_NAME = "CarWatchDaily"
@@ -32,8 +32,9 @@ def local_minute_time(dubai_minutes: int):
 
 
 def local_run_time():
-    """13:00 Dubai expressed in this computer's local time zone."""
-    return local_hour_time(RUN_HOUR_DUBAI)
+    """The daily-report time (config daily_time, Dubai) in this computer's local time zone."""
+    hour, minute = daily_time(load_config())
+    return local_minute_time(hour * 60 + minute)
 
 
 def windows_xml(description: str, trigger: str, args: str, time_limit: str) -> str:
@@ -141,7 +142,7 @@ def install():
                 f.write(xml)
             subprocess.run(["schtasks", "/Create", "/TN", name, "/XML", f.name, "/F"], check=True)
             Path(f.name).unlink()
-        print(f"Task Scheduler: '{TASK_NAME}' runs daily at {t:%H:%M} local (= 13:00 Dubai); "
+        print(f"Task Scheduler: '{TASK_NAME}' runs daily at {t:%H:%M} local (= daily_time in Dubai); "
               "if the PC was asleep or off, it runs as soon as possible afterwards.\n"
               f"Task Scheduler: '{SYNC_TASK_NAME}' checks Telegram for 'Not interested' taps every 15 minutes.")
     elif system == "Darwin":
@@ -151,7 +152,7 @@ def install():
             plist.write_text(plist_text)
             subprocess.run(["launchctl", "unload", str(plist)], capture_output=True)
             subprocess.run(["launchctl", "load", str(plist)], check=True)
-        print(f"launchd: daily run at {t:%H:%M} local (= 13:00 Dubai, catches up on wake); "
+        print(f"launchd: daily run at {t:%H:%M} local (= daily_time in Dubai, catches up on wake); "
               "Telegram sync every 15 minutes.")
     else:
         # cron can't catch up after sleep, so check hourly; --scheduled runs at most once per daily window.
@@ -163,7 +164,7 @@ def install():
                  f'*/15 * * * * cd "{ROOT}" && "{sys.executable}" -m carwatch telegram-sync >> "{log}" 2>&1']
         subprocess.run(["crontab", "-"], input="\n".join(_crontab_without_ours() + lines) + "\n",
                        text=True, check=True)
-        print("cron: hourly check (runs once per day after 13:00 Dubai, catches up after sleep); "
+        print("cron: hourly check (runs once per day after daily_time Dubai, catches up after sleep); "
               "Telegram sync every 15 minutes.")
 
 

@@ -4,7 +4,7 @@ on:
   schedule:
     # GitHub cron is UTC. Dubai = UTC+4 (no daylight saving). Scheduled runs are best-effort, and
     # GitHub delays or drops many at :00 and :30 when it's busiest, so these use :07 and :37.
-    - cron: "7 9 * * *"           # 13:07 Dubai: daily run, all sites
+    - cron: "7 8 * * *"           # 12:07 Dubai: backup daily run, all sites (main trigger: cron-job.org 12:00)
     - cron: "7,37 2-19 * * *"     # 06:07-23:37 Dubai, every 30 min: Toyota/Honda pre-owned watch
   workflow_dispatch:
     inputs:
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
-      MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '7 9 * * *' && 'daily' || 'watch') }}
+      MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '7 8 * * *' && 'daily' || 'watch') }}
       SCHEDULED_FLAG: ${{ (github.event_name == 'schedule' || inputs.scheduled) && '--scheduled' || '' }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

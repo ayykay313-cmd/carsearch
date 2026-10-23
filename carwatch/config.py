@@ -12,7 +12,13 @@ DB_PATH = DATA_DIR / "carwatch.db"
 
 # Dubai has no DST, so a fixed offset is exact (and avoids needing tzdata on Windows).
 DUBAI_TZ = timezone(timedelta(hours=4), "Asia/Dubai")
-RUN_HOUR_DUBAI = 13
+RUN_HOUR_DUBAI = 13  # default daily-report time if config.yaml has no daily_time
+
+
+def daily_time(cfg: dict) -> tuple:
+    """(hour, minute) of the daily report, Dubai time, from config.yaml's daily_time ("12:00")."""
+    hh, _, mm = str(cfg.get("daily_time", f"{RUN_HOUR_DUBAI}:00")).partition(":")
+    return int(hh), int(mm or 0)
 
 
 def now_dubai() -> datetime:
