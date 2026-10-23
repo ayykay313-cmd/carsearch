@@ -53,7 +53,15 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
-      - run: python -m playwright install --with-deps chromium
+      # Chromium itself comes from the cache above. Its Linux system libraries are normally already on
+      # GitHub's Ubuntu machines; installing them anyway (--with-deps) goes through apt, which sometimes
+      # takes 10+ minutes and delays the watch. So only install them if Chromium can't start.
+      - name: Install Chromium for Playwright
+        timeout-minutes: 15
+        run: |
+          python -m playwright install chromium
+          python -c "from playwright.sync_api import sync_playwright as s; p = s().start(); p.chromium.launch().close(); p.stop()" \
+            || python -m playwright install-deps chromium
 
       # The SQLite database (seen listings, prices, "Not interested" taps) lives in the Actions cache
       # between runs: restore the newest copy, save a new one at the end.
