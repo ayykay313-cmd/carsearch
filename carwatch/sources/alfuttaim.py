@@ -175,16 +175,22 @@ class AlFuttaimPreowned(Source):
                 continue
             words = m.group("name").split()
             make = model = None
+            min_year = 0
             for entry in self.src_cfg.get("models", []):
-                k = len(entry.split())
+                # "Toyota Camry", or {model: "Toyota Corolla Cross", min_year: 2026}
+                name = entry["model"] if isinstance(entry, dict) else entry
+                k = len(name.split())
                 # badges ("New arrival", ...) may come before the name, so search for make+model
-                at = next((i for i in range(len(words)) if norm(" ".join(words[i:i + k])) == norm(entry)), None)
+                at = next((i for i in range(len(words)) if norm(" ".join(words[i:i + k])) == norm(name)), None)
                 if at is not None:
-                    make, _, model = entry.partition(" ")
+                    make, _, model = name.partition(" ")
                     trim = " ".join(words[at + k:])
+                    min_year = entry.get("min_year", 0) if isinstance(entry, dict) else 0
                     break
             if not make:
                 continue  # not one of the wanted models
+            if int(m.group("year")) < min_year:
+                continue  # wanted model, but older than its minimum year
             vin = c["href"].rstrip("/").rsplit("/", 1)[-1].upper()
             out.append(Listing(
                 source=self.name, source_id=vin, url=base + c["href"],

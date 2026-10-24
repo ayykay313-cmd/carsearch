@@ -172,13 +172,18 @@ sources:
   # Top priority: official Al-Futtaim pre-owned sites. These skip the price/km/year/location criteria:
   # any AVAILABLE (not reserved) hybrid of the listed models is reported, in its own section at the top.
   # Pages are rendered in a headless browser (Playwright) because the cars load via JavaScript.
+  # A model can have a minimum year: {model: ..., min_year: 2026}. Price and km are never limited here.
   toyota_preowned:
     enabled: true
-    models: [Toyota Camry, Toyota RAV4]
+    models:
+      - Toyota Camry
+      - Toyota RAV4
+      - {model: Toyota Corolla Cross, min_year: 2026}   # daily report only (not in watch.rules)
     pages:
       - https://www.toyota.ae/en/pre-owned/camry-hybrid/
       - https://www.toyota.ae/en/pre-owned/camry/
       - https://www.toyota.ae/en/pre-owned/rav4/
+      - https://www.toyota.ae/en/pre-owned/corolla-cross%20hybrid/   # Toyota's own link has a space
     watch_pages:     # the hourly watch only loads these
       - https://www.toyota.ae/en/pre-owned/camry-hybrid/
       - https://www.toyota.ae/en/pre-owned/rav4/

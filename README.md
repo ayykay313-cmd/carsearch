@@ -174,7 +174,7 @@ python -m carwatch telegram-sync       # apply Telegram taps now
 | Step | Rule |
 | --- | --- |
 | Every site | available (not reserved/booked/sold/coming soon), a hybrid (site fuel type says Hybrid, or title/trim/description says hybrid/HEV), not a mild hybrid, not electric/diesel |
-| Toyota/Honda Pre-Owned | only the listed models (Camry, RAV4, Accord); no price/km/year/location limits. The watch narrows this to the `watch.rules` (RAV4 2026+, any Camry, any Accord) |
+| Toyota/Honda Pre-Owned | only the listed models (Camry, RAV4, Accord, and Corolla Cross 2026+); no price/km/location limits, and no year limit unless the model sets `min_year`. The watch narrows this to the `watch.rules` (RAV4 2026+, any Camry, any Accord) |
 | Other sites | year ≥ `min_year`, `min_km` ≤ km < `max_km` (0 km new stock excluded), price < `max_price_aed`, GCC specs, sedan/SUV, not an excluded make, Dubai (main) or Sharjah/Abu Dhabi (lower priority) |
 | New | matches now and was never included in a sent message (by site listing ID) |
 | Price drop | already reported, still matches, price lower than when you were last told |
@@ -189,7 +189,7 @@ python -m carwatch telegram-sync       # apply Telegram taps now
 
 | Site | Status | How |
 | --- | --- | --- |
-| Toyota Pre-Owned | ✅ top priority, every 30 min | toyota.ae model pages (`camry-hybrid`, `camry`, `rav4`) rendered in headless Chromium (Playwright), since the cars load via a token-protected API. "Reserved" cards skipped. A page whose results don't load is retried, then reported as not loaded (never as "no cars"). Detail pages are off-limits in robots.txt and never opened |
+| Toyota Pre-Owned | ✅ top priority, every 30 min | toyota.ae model pages (`camry-hybrid`, `camry`, `rav4`, and `corolla-cross hybrid` for the daily report) rendered in headless Chromium (Playwright), since the cars load via a token-protected API. Each car's status comes from the page's own data (AV = available; reserved skipped). A page whose results don't load is retried, then reported as not loaded (never as "no cars"). Detail pages are off-limits in robots.txt and never opened |
 | Honda Pre-Owned | ✅ top priority, every 30 min | honda.ae `accord-hybrid` (watch) and `accord` (daily) pages, same method |
 | DubiCars | ✅ daily | `/uae/used/hybrid-cars?pt=<price>&kt=<km>` (allowed by robots.txt), plus priority-model pages to catch hybrids filed under "Petrol"; detail page fetched only for new candidates. Sold/inactive cards skipped |
 | CarSwitch | ✅ daily | `/uae/used-cars/electric-hybrid-cars-for-sale-in-uae`; robots.txt bans its filter parameters, so filtering is local. Detail page for candidates (body, fuel type, drops EVs). No seller description, so red flags only check the title |
